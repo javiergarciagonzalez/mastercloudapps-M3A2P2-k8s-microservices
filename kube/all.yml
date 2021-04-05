@@ -55,6 +55,7 @@ spec:
     targetPort: 27019
     name: mongo-port-27019
     protocol: TCP
+  type: ClusterIP # Valor por defecto. Lo especifico para que quede claro que está puesto a propósito (este, y el resto de <type: ClusterIP)
 
 # MYSQL
 ---
@@ -100,6 +101,7 @@ spec:
     targetPort: 3306
     name: mysql-port
     protocol: TCP
+  type: ClusterIP
 
 # PLANNER
 ---
@@ -189,6 +191,7 @@ spec:
     targetPort: 15672
     name: rabbit-port-15672
     protocol: TCP
+  type: ClusterIP
 
 # SERVER
 ---
@@ -302,6 +305,7 @@ spec:
   - port: 8080
     targetPort: 8080
     name: topo-port
+  type: ClusterIP
 
 # WEATHER
 ---
@@ -346,3 +350,4 @@ spec:
   ports:
   - port: 9090
     targetPort: 9090
+  type: ClusterIP
