@@ -1,0 +1,354 @@
+# MONGO
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb-deployment
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:4.2.12-bionic
+        ports:
+        - containerPort: 27017
+        - containerPort: 27018
+        - containerPort: 27019
+        env:
+        - name: MONGO_INITDB_DATABASE
+          value: topoDB
+        - name: MONGO_INITDB_ROOT_USERNAME
+          value: root
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          value: password
+  replicas: 1
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+spec:
+  selector:
+    app: mongodb
+  ports:
+  - port: 27017
+    targetPort: 27017
+    name: mongo-port-27017
+    protocol: TCP
+  - port: 27018
+    targetPort: 27018
+    name: mongo-port-27018
+    protocol: TCP
+  - port: 27019
+    targetPort: 27019
+    name: mongo-port-27019
+    protocol: TCP
+  type: NodePort
+
+# MYSQL
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0.22
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: password
+        - name: MYSQL_DATABASE
+          value: eoloplantsDB
+  replicas: 1
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  labels:
+    app: mysql
+spec:
+  selector:
+    app: mysql
+  ports:
+  - port: 3306
+    targetPort: 3306
+    name: mysql-port
+    protocol: TCP
+  type: NodePort
+
+# PLANNER
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: planner-deployment
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: planner
+  template:
+    metadata:
+      labels:
+        app: planner
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: planner
+        image: oscarsotosanchez/planner:v1.0
+        env:
+        - name: TOPO_HOST
+          value: toposervice-service
+        - name: TOPO_PORT
+          value: "8080"
+        - name: GRPC_CLIENT_WEATHERSERVER_ADDRESS
+          value: static://weatherservice-service:9090
+        - name: SPRING_RABBITMQ_HOST
+          value: rabbitmq-service
+        - name: SPRING_RABBITMQ_PORT
+          value: "5672"
+        - name: SPRING_RABBITMQ_USERNAME
+          value: root
+        - name: SPRING_RABBITMQ_PASSWORD
+          value: password
+  replicas: 1
+
+
+#Rabbitmq
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-deployment
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:3-management
+        ports:
+        - containerPort: 5672
+        - containerPort: 15672
+        env:
+        - name: RABBITMQ_DEFAULT_USER
+          value: root
+        - name: RABBITMQ_DEFAULT_PASS
+          value: password
+  replicas: 1
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-service
+  labels:
+    app: rabbitmq
+spec:
+  selector:
+    app: rabbitmq
+  ports:
+  - port: 5672
+    targetPort: 5672
+    name: rabbit-port-5672
+    protocol: TCP
+  - port: 15672
+    targetPort: 15672
+    name: rabbit-port-15672
+    protocol: TCP
+  type: NodePort
+
+# SERVER
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server-deployment
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: server
+  template:
+    metadata:
+      labels:
+        app: server
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: server
+        image: oscarsotosanchez/server:v1.0
+        command: ["bash"]
+        args:
+        - "-c"
+        - "./wait-for-it.sh mysql-service:3306 -t 500 -- ./wait-for-it.sh rabbitmq-service:5672 -t 500 -- node src/server.js"
+        ports:
+        - containerPort: 3000
+        env:
+        - name: MYSQL_HOST
+          value: mysql-service
+        - name: MYSQL_DB
+          value: eoloplantsDB
+        - name: MYSQL_USER
+          value: root
+        - name: MYSQL_PASS
+          value: password
+        - name: RABBITMQ_URL
+          value: amqp://root:password@rabbitmq-service
+  replicas: 1
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: server-service
+  labels:
+    app: server
+spec:
+  selector:
+    app: server
+  ports:
+  - port: 3000
+    targetPort: 3000
+    nodePort: 30000
+    protocol: TCP
+    name: server-http
+  type: NodePort
+
+# TOPO
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: topo-deployment
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: topo
+  template:
+    metadata:
+      labels:
+        app: topo
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: topo
+        image: oscarsotosanchez/toposervice:v1.0
+        env:
+        - name: SPRING_DATA_MONGODB_HOST
+          value: mongodb-service
+        - name: SPRING_DATA_MONGODB_PORT
+          value: "27017"
+        - name: SPRING_DATA_MONGODB_DATABASE
+          value: topoDB
+        - name: SPRING_DATA_MONGODB_AUTHENTICATION-DATABASE
+          value: admin
+        - name: SPRING_DATA_MONGODB_USERNAME
+          value: root
+        - name: SPRING_DATA_MONGODB_PASSWORD
+          value: password
+        ports:
+        - containerPort: 8080
+  replicas: 1
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: topo-service
+  labels:
+    app: topo
+spec:
+  selector:
+    app: topo
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: topo-port
+  type: NodePort
+
+# WEATHER
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-deployment
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: weather
+  template:
+    metadata:
+      labels:
+        app: weather
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: weather
+        image: oscarsotosanchez/weatherservice:v1.0
+        # resources:
+        #   limits:
+        #     memory: "128Mi"
+        #     cpu: "250m"
+        env:
+        - name: GRPC_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: GRPC_PORT
+          value: "9090"
+        ports:
+        - containerPort: 9090
+  replicas: 1
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: weather-service
+  labels:
+    app: weather
+spec:
+  selector:
+    app: weather
+  ports:
+  - port: 9090
+    targetPort: 9090
+  type: NodePort
