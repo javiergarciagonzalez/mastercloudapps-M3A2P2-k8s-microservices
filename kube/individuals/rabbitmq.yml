@@ -46,4 +46,3 @@ spec:
     targetPort: 15672
     name: rabbit-port-15672
     protocol: TCP
-  type: ClusterIP

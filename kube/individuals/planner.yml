@@ -20,11 +20,11 @@ spec:
         image: oscarsotosanchez/planner:v1.0
         env:
         - name: TOPO_HOST
-          value: toposervice-service
+          value: topo-service
         - name: TOPO_PORT
           value: "8080"
         - name: GRPC_CLIENT_WEATHERSERVER_ADDRESS
-          value: static://weatherservice-service:9090
+          value: static://weather-service:9090
         - name: SPRING_RABBITMQ_HOST
           value: rabbitmq-service
         - name: SPRING_RABBITMQ_PORT

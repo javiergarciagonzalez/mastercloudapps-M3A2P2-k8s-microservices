@@ -19,8 +19,11 @@ spec:
         image: mongo:4.2.12-bionic
         ports:
         - containerPort: 27017
+          name: mongodb-27017
         - containerPort: 27018
+          name: mongodb-27018
         - containerPort: 27019
+          name: mongodb-27019
         env:
         - name: MONGO_INITDB_DATABASE
           value: topoDB
@@ -51,4 +54,3 @@ spec:
     targetPort: 27019
     name: mongo-port-27019
     protocol: TCP
-  type: ClusterIP

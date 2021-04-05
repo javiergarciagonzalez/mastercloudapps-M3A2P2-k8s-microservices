@@ -18,15 +18,9 @@ spec:
       containers:
       - name: weather
         image: oscarsotosanchez/weatherservice:v1.0
-        # resources:
-        #   limits:
-        #     memory: "128Mi"
-        #     cpu: "250m"
         env:
         - name: GRPC_HOST
-          valueFrom:
-            fieldRef:
-              fieldPath: status.podIP
+          value: "0.0.0.0"
         - name: GRPC_PORT
           value: "9090"
         ports:
@@ -46,4 +40,3 @@ spec:
   ports:
   - port: 9090
     targetPort: 9090
-  type: ClusterIP

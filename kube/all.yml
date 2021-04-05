@@ -20,8 +20,11 @@ spec:
         image: mongo:4.2.12-bionic
         ports:
         - containerPort: 27017
+          name: mongodb-27017
         - containerPort: 27018
+          name: mongodb-27018
         - containerPort: 27019
+          name: mongodb-27019
         env:
         - name: MONGO_INITDB_DATABASE
           value: topoDB
@@ -52,7 +55,6 @@ spec:
     targetPort: 27019
     name: mongo-port-27019
     protocol: TCP
-  type: NodePort
 
 # MYSQL
 ---
@@ -98,7 +100,6 @@ spec:
     targetPort: 3306
     name: mysql-port
     protocol: TCP
-  type: NodePort
 
 # PLANNER
 ---
@@ -123,11 +124,11 @@ spec:
         image: oscarsotosanchez/planner:v1.0
         env:
         - name: TOPO_HOST
-          value: toposervice-service
+          value: topo-service
         - name: TOPO_PORT
           value: "8080"
         - name: GRPC_CLIENT_WEATHERSERVER_ADDRESS
-          value: static://weatherservice-service:9090
+          value: static://weather-service:9090
         - name: SPRING_RABBITMQ_HOST
           value: rabbitmq-service
         - name: SPRING_RABBITMQ_PORT
@@ -188,7 +189,6 @@ spec:
     targetPort: 15672
     name: rabbit-port-15672
     protocol: TCP
-  type: NodePort
 
 # SERVER
 ---
@@ -243,7 +243,7 @@ spec:
   ports:
   - port: 3000
     targetPort: 3000
-    nodePort: 30000
+    nodePort: 31000
     protocol: TCP
     name: server-http
   type: NodePort
@@ -282,6 +282,8 @@ spec:
           value: root
         - name: SPRING_DATA_MONGODB_PASSWORD
           value: password
+        - name: SERVER_PORT
+          value: "8080"
         ports:
         - containerPort: 8080
   replicas: 1
@@ -300,7 +302,6 @@ spec:
   - port: 8080
     targetPort: 8080
     name: topo-port
-  type: NodePort
 
 # WEATHER
 ---
@@ -323,15 +324,9 @@ spec:
       containers:
       - name: weather
         image: oscarsotosanchez/weatherservice:v1.0
-        # resources:
-        #   limits:
-        #     memory: "128Mi"
-        #     cpu: "250m"
         env:
         - name: GRPC_HOST
-          valueFrom:
-            fieldRef:
-              fieldPath: status.podIP
+          value: "0.0.0.0"
         - name: GRPC_PORT
           value: "9090"
         ports:
@@ -351,4 +346,3 @@ spec:
   ports:
   - port: 9090
     targetPort: 9090
-  type: NodePort
